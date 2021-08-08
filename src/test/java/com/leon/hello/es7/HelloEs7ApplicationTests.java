@@ -24,6 +24,7 @@ import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MatchAllQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
@@ -179,7 +180,7 @@ class HelloEs7ApplicationTests {
 
         // 将对象放入请求 json
         request.source(JSON.toJSONString(userBuilder.build()), XContentType.JSON);
-
+        System.out.println(request.sourceAsMap());
         // 发送请求，获取相应结果
         IndexResponse indexResponse = client.index(request, RequestOptions.DEFAULT);
         System.out.println(indexResponse.toString());
@@ -207,7 +208,7 @@ class HelloEs7ApplicationTests {
      */
     @Test
     void testGetDocument() throws IOException {
-        GetRequest getRequest = new GetRequest(INDEX, "2");
+        GetRequest getRequest = new GetRequest(INDEX, "mCzIJXsBb9n4tyhSE8iJ");
         // 不获取返回的 _source 的上下文
         GetResponse getResponse = client.get(getRequest, RequestOptions.DEFAULT);
         System.out.println(getResponse.getSourceAsString()); // 打印文档的内容
@@ -314,6 +315,117 @@ class HelloEs7ApplicationTests {
         for (SearchHit hit : searchResponse.getHits().getHits()) {
             System.out.println(hit.getSourceAsMap());
         }
+    }
+
+
+    /**
+     * 批量插入文档信息
+     * get/index/doc/1
+     */
+    @Test
+    void testBulkAddDocumentForFuzzyQuery() throws IOException {
+        BulkRequest bulkRequest = new BulkRequest();
+        bulkRequest.timeout("10s");
+
+        List<User> userList = generateUserList();
+
+        // 批量生成请求
+        for (int i = 0; i < userList.size(); i++) {
+            // 批量操作都在这儿
+            bulkRequest.add(new IndexRequest(INDEX)
+                    .id("" + (i + 1))
+                    .source(JSON.toJSONString(userList.get(i)), XContentType.JSON));
+        }
+
+        BulkResponse bulkResponse = client.bulk(bulkRequest, RequestOptions.DEFAULT);
+        System.out.println("批量保存结果 ---> " + bulkResponse.status());
+        System.out.println("批量保存是否有失败 ---> " + bulkResponse.hasFailures());
+    }
+
+    /**
+     * 名字模糊查询
+     *
+     * @throws IOException
+     */
+    @Test
+    void testNameFuzzyQuery() throws IOException {
+        SearchRequest searchRequest = new SearchRequest(INDEX);
+        // 构建搜索条件
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        // 查询条件可以用 QueryBuilders 构建
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+//        boolQuery.should(QueryBuilders.wildcardQuery("name", "*小刘*")); // FIXME: 能实现功能但是性能不好
+        boolQuery.should(QueryBuilders.matchPhraseQuery("name", "小刘"));
+
+        sourceBuilder.query(boolQuery);
+        sourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+        sourceBuilder.from(0); // 设置分页
+        sourceBuilder.size(100);
+
+        // 将查询条件放入查询请求
+        searchRequest.source(sourceBuilder);
+
+        // 执行请求
+        SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+        System.out.println(searchResponse);
+        System.out.println(JSON.toJSONString(searchResponse.getHits()));
+        System.out.println("==================遍历======================");
+        System.out.println("查询到 " + searchResponse.getHits().getHits().length + " 条数据");
+        for (SearchHit hit : searchResponse.getHits().getHits()) {
+            System.out.println(hit.getSourceAsMap());
+        }
+    }
+
+    /**
+     * 构造用户信息
+     *
+     * @return
+     */
+    public List<User> generateUserList() {
+        List<User> userList = new ArrayList<>();
+        User user1 = new User();
+        user1.setName("Aleon");
+        userList.add(user1);
+
+        User user2 = new User();
+        user2.setName("leon");
+        userList.add(user2);
+
+        User user3 = new User();
+        user3.setName("leonB");
+        userList.add(user3);
+
+        User user4 = new User();
+        user4.setName("leonjjj");
+        userList.add(user4);
+
+        // ========= 中文 =========
+
+        User user5 = new User();
+        user5.setName("刘");
+        userList.add(user5);
+
+        User user6 = new User();
+        user6.setName("小刘");
+        userList.add(user6);
+
+        User user7 = new User();
+        user7.setName("刘文文");
+        userList.add(user7);
+
+        User user8 = new User();
+        user8.setName("这段文字里包含了刘字");
+        userList.add(user8);
+
+        User user9 = new User();
+        user9.setName("刘小小");
+        userList.add(user9);
+
+        User user10 = new User();
+        user10.setName("小刘小小刘小");
+        userList.add(user10);
+
+        return userList;
     }
 
     /**
