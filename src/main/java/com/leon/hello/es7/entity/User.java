@@ -1,6 +1,9 @@
 package com.leon.hello.es7.entity;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -12,13 +15,26 @@ import org.springframework.stereotype.Component;
  * @Version 1.0
  * @DESCRIPTION:
  **/
+@Builder
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 @Component
 @ConfigurationProperties(prefix = "user")
 public class User {
+
+    // 主键
+    private String id;
+
+    // 姓名
     private String name;
 
+    // 性别
+    private int sex;
+
+    // 年龄
     private int age;
 
-    private boolean ok; // don't user is for prefix
+    // 爱好
+    private String[] hobby;
 }
