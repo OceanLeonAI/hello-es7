@@ -239,7 +239,9 @@ class HelloEs7ApplicationTests {
         DeleteRequest deleteRequest = new DeleteRequest(INDEX, "1");
         deleteRequest.timeout("1s");
         DeleteResponse deleteResponse = client.delete(deleteRequest, RequestOptions.DEFAULT);
+        System.out.println(deleteResponse);
         System.out.println(deleteResponse.status());
+        System.out.println(deleteResponse.status().getStatus() == 200);
     }
 
     /**
