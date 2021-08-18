@@ -27,6 +27,8 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MatchAllQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.reindex.BulkByScrollResponse;
+import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
@@ -146,7 +148,7 @@ class HelloEs7ApplicationTests {
         GetIndexRequest getIndexRequest = new GetIndexRequest(INDEX);
         boolean exists = client.indices().exists(getIndexRequest, RequestOptions.DEFAULT);
         if (!exists) {
-            System.out.printf("index_leon 不存在，执行创建操作。。。");
+            System.out.printf("user 不存在，执行创建操作。。。");
             //1.创建索引请求
             CreateIndexRequest request = new CreateIndexRequest(INDEX);
             //2.客户端执行请求 CreateIndexRequest，返回响应
@@ -208,7 +210,7 @@ class HelloEs7ApplicationTests {
      */
     @Test
     void testGetDocument() throws IOException {
-        GetRequest getRequest = new GetRequest(INDEX, "mCzIJXsBb9n4tyhSE8iJ");
+        GetRequest getRequest = new GetRequest(INDEX, "1");
         // 不获取返回的 _source 的上下文
         GetResponse getResponse = client.get(getRequest, RequestOptions.DEFAULT);
         System.out.println(getResponse.getSourceAsString()); // 打印文档的内容
@@ -257,7 +259,8 @@ class HelloEs7ApplicationTests {
         for (int i = 0; i < 100; i++) {
             userList.add(
                     User.builder()
-                            .id(generateUuid32())
+//                            .id(generateUuid32())
+                            .id(i % 2 == 0 ? "偶数" + generateUuid32() : "奇数" + generateUuid32())
                             .name(userNames[i % userNames.length] + RANDOM.nextInt(i + 1) + userNames[i % 15]) // 随机取名字
                             .sex(userSex[i % userSex.length]) // 随机性别
                             .age(RANDOM.nextInt(MAX_AGE)) // 随机年龄
@@ -440,5 +443,147 @@ class HelloEs7ApplicationTests {
             System.out.println(random.nextInt(100));
         }
     }
+
+    /**
+     * 获取文档信息
+     * get/index/doc/1
+     */
+    @Test
+    void testGetDocumentMetaTable() throws IOException {
+        GetRequest getRequest = new GetRequest("meta_table", "metadata/metadata/0817tabletest111update");
+        // 不获取返回的 _source 的上下文
+        GetResponse getResponse = client.get(getRequest, RequestOptions.DEFAULT);
+        System.out.println(getResponse.getSourceAsString()); // 打印文档的内容
+        System.out.println(getResponse);
+    }
+
+    @Test
+    void testDeleteDocumentMetaTable() throws IOException {
+        DeleteRequest deleteRequest = new DeleteRequest("meta_table", "metadata/metadata/0817tabletest111update");
+        deleteRequest.timeout("1s");
+        DeleteResponse deleteResponse = client.delete(deleteRequest, RequestOptions.DEFAULT);
+        System.out.println(deleteResponse);
+        System.out.println(deleteResponse.status());
+        System.out.println(deleteResponse.status().getStatus() == 200);
+    }
+
+    /**
+     * 测试 DeleteByQuery
+     *
+     * @throws IOException
+     */
+    @Test
+    void testDeleteByQuery() throws IOException {
+
+        // 支持同时操作多个索引
+        DeleteByQueryRequest request = new DeleteByQueryRequest("user");
+
+        // 批量更新内容的时候，可能会遇到文档版本冲突的情况，需要设置版本冲突的时候如何处理
+        // proceed - 忽略版本冲突，继续执行
+        // abort - 遇到版本冲突，中断执行
+        request.setConflicts("proceed");
+
+        // 设置term查询条件，查询user字段=kimchy的文档内容
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery.must(QueryBuilders.matchQuery("name", "张三0张三"));
+        request.setQuery(boolQuery);
+
+        // 限制删除文档数量
+        request.setMaxDocs(Integer.MAX_VALUE);
+        BulkByScrollResponse bulkResponse = client.deleteByQuery(request, RequestOptions.DEFAULT);
+
+        // 处理结果
+        TimeValue timeTaken = bulkResponse.getTook(); // 批量操作消耗时间
+        System.out.println("批量操作消耗时间 timeTaken " + timeTaken);
+
+        boolean timedOut = bulkResponse.isTimedOut(); // 是否超时
+        System.out.println("是否超时 timedOut " + timedOut);
+
+        long totalDocs = bulkResponse.getTotal(); // 涉及文档总数
+        System.out.println("是否超时 totalDocs " + totalDocs);
+
+        long deletedDocs = bulkResponse.getDeleted(); // 成功删除文档数量
+        System.out.println("成功删除文档数量 deletedDocs " + deletedDocs);
+
+        long versionConflicts = bulkResponse.getVersionConflicts(); // 版本冲突次数
+        System.out.println("版本冲突次数 versionConflicts " + versionConflicts);
+
+    }
+
+    /**
+     * 通过数据源名称查询es数据
+     *
+     * @throws IOException
+     */
+    @Test
+    void queryMetadataByCatalogName() throws IOException {
+        SearchRequest searchRequest = new SearchRequest("meta_table");
+        // 构建搜索条件
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        // 查询条件可以用 QueryBuilders 构建
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "metadata"));
+        sourceBuilder.query(boolQuery);
+        sourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+        sourceBuilder.from(0); // 设置分页
+        sourceBuilder.size(Integer.MAX_VALUE);
+
+        // 将查询条件放入查询请求
+        searchRequest.source(sourceBuilder);
+
+        // 执行请求
+        SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+//        System.out.println(searchResponse);
+//        System.out.println(JSON.toJSONString(searchResponse.getHits()));
+        System.out.println("==================遍历======================");
+        System.out.println("查询到 " + searchResponse.getHits().getHits().length + " 条数据");
+        for (SearchHit hit : searchResponse.getHits().getHits()) {
+            System.out.println(hit.getSourceAsMap());
+        }
+    }
+
+    /**
+     * 通过数据源名称删除es数据
+     *
+     * @throws IOException
+     */
+    @Test
+    void testDeleteMetadataByCatalogName() throws IOException {
+
+        // 支持同时操作多个索引
+        DeleteByQueryRequest request = new DeleteByQueryRequest("meta_table");
+
+        // 批量更新内容的时候，可能会遇到文档版本冲突的情况，需要设置版本冲突的时候如何处理
+        // proceed - 忽略版本冲突，继续执行
+        // abort - 遇到版本冲突，中断执行
+        request.setConflicts("proceed");
+
+        // 设置term查询条件，查询user字段=kimchy的文档内容
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "metadata"));
+        request.setQuery(boolQuery);
+
+        // 限制删除文档数量
+        request.setMaxDocs(Integer.MAX_VALUE);
+        BulkByScrollResponse bulkResponse = client.deleteByQuery(request, RequestOptions.DEFAULT);
+
+        // 处理结果
+        TimeValue timeTaken = bulkResponse.getTook(); // 批量操作消耗时间
+        System.out.println("批量操作消耗时间 timeTaken " + timeTaken);
+
+        boolean timedOut = bulkResponse.isTimedOut(); // 是否超时
+        System.out.println("是否超时 timedOut " + timedOut);
+
+        long totalDocs = bulkResponse.getTotal(); // 涉及文档总数
+        System.out.println("是否超时 totalDocs " + totalDocs);
+
+        long deletedDocs = bulkResponse.getDeleted(); // 成功删除文档数量
+        System.out.println("成功删除文档数量 deletedDocs " + deletedDocs);
+
+        long versionConflicts = bulkResponse.getVersionConflicts(); // 版本冲突次数
+        System.out.println("版本冲突次数 versionConflicts " + versionConflicts);
+
+    }
+
 
 }
