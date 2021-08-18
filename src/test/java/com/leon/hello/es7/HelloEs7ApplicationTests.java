@@ -558,9 +558,9 @@ class HelloEs7ApplicationTests {
         // abort - 遇到版本冲突，中断执行
         request.setConflicts("proceed");
 
-        // 设置term查询条件，查询user字段=kimchy的文档内容
+        // 设置term查询条件，查询 name.catalogName = metadata 的文档内容
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "metadata"));
+        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "rrrrr5"));
         request.setQuery(boolQuery);
 
         // 限制删除文档数量
