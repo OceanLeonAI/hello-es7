@@ -522,7 +522,9 @@ class HelloEs7ApplicationTests {
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
         // 查询条件可以用 QueryBuilders 构建
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "metadata"));
+//        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "metadata"));
+        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "greenplum")); // 1
+//        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "数据中台")); // 228
         sourceBuilder.query(boolQuery);
         sourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
         sourceBuilder.from(0); // 设置分页
@@ -560,7 +562,7 @@ class HelloEs7ApplicationTests {
 
         // 设置term查询条件，查询 name.catalogName = metadata 的文档内容
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "rrrrr5"));
+        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "greenplum"));
         request.setQuery(boolQuery);
 
         // 限制删除文档数量
