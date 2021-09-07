@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSON;
 import com.leon.hello.es7.entity.User;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -19,14 +21,14 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.CreateIndexResponse;
-import org.elasticsearch.client.indices.GetIndexRequest;
+import org.elasticsearch.client.indices.*;
+import org.elasticsearch.cluster.metadata.MappingMetadata;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MatchAllQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.WildcardQueryBuilder;
 import org.elasticsearch.index.reindex.BulkByScrollResponse;
 import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.search.SearchHit;
@@ -37,15 +39,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @SpringBootTest
 class HelloEs7ApplicationTests {
+
 
     @Autowired
     private RestHighLevelClient client;
@@ -587,5 +587,85 @@ class HelloEs7ApplicationTests {
 
     }
 
+    /**
+     * 获取 settings
+     *
+     * @throws IOException
+     */
+    @Test
+    void getSettingsTest() throws IOException {
+        GetSettingsRequest getSettings = new GetSettingsRequest().indices("meta_table");
+        GetSettingsResponse getSettingsResponse = client.indices().getSettings(getSettings, RequestOptions.DEFAULT);
+        System.out.println("getSettingsResponse ---> " + getSettingsResponse);
+        String numberOfShardsString = getSettingsResponse.getSetting("index", "index.number_of_shards");
+        System.out.println("numberOfShardsString ---> " + numberOfShardsString);
+    }
+
+    /**
+     * 获取 mappings
+     *
+     * @throws IOException
+     */
+    @Test
+    void getMappingsTest() throws IOException {
+        GetMappingsRequest getMappings = new GetMappingsRequest().indices("meta_table");
+        GetMappingsResponse getMappingResponse = client.indices().getMapping(getMappings, RequestOptions.DEFAULT);
+        Map<String, MappingMetadata> allMappings = getMappingResponse.mappings();
+        MappingMetadata indexMapping = allMappings.get("meta_table");
+        Map<String, Object> mapping = indexMapping.sourceAsMap();
+        Iterator<Map.Entry<String, Object>> entries = mapping.entrySet().iterator();
+        while (entries.hasNext()) {
+            Map.Entry<String, Object> entry = entries.next();
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            System.out.println(key + ":" + value);
+        }
+    }
+
+    /**
+     * 数据地图
+     *
+     * @throws IOException
+     */
+    @Test
+    void dataMapQueryTest() throws IOException {
+        // SearchRequest searchRequest = new SearchRequest(INDEX);
+        SearchRequest searchRequest = new SearchRequest("meta_table");
+        // 构建搜索条件
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        // 查询条件可以用 QueryBuilders 构建
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+//        boolQuery.should(QueryBuilders.wildcardQuery("name.tableName", "*user*")); // FIXME: 能实现功能但是性能不好
+        // boolQuery.should(QueryBuilders.matchPhraseQuery("name", "小刘"));
+
+
+        String keyword = "*aa*";
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        WildcardQueryBuilder tableName = QueryBuilders.wildcardQuery("name.tableName", keyword);
+        boolQueryBuilder.should(tableName);
+//        WildcardQueryBuilder tableCnName = QueryBuilders.wildcardQuery("name.tableCnName", keyword);
+//        boolQueryBuilder.should(tableCnName);
+        boolQuery.must(boolQueryBuilder);
+
+        sourceBuilder.query(boolQuery);
+        sourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+        sourceBuilder.from(0); // 设置分页
+        sourceBuilder.size(10000);
+
+        // 将查询条件放入查询请求
+        searchRequest.source(sourceBuilder);
+
+        // 执行请求
+        SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+//        System.out.println(searchResponse);
+//        System.out.println(JSON.toJSONString(searchResponse.getHits()));
+        System.out.println("==================遍历======================");
+        System.out.println("查询到 " + searchResponse.getHits().getHits().length + " 条数据");
+        for (SearchHit hit : searchResponse.getHits().getHits()) {
+//            System.out.println(hit.getSourceAsMap());
+            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            Map<String, Object> map = (Map<String, Object>) sourceAsMap.get("name");
+        }
+    }
 
 }
