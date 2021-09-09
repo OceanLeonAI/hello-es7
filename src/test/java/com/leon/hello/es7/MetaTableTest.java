@@ -79,12 +79,13 @@ public class MetaTableTest {
                 "dataMapElasticSearchDto.createTimeString" // 创建时间
         };
 
-        final String ES_RESULT_SORT_FIELDS = "dataMapElasticSearchDto.createTimeString";
+//        final String ES_RESULT_SORT_FIELDS = "dataMapElasticSearchDto.createTimeString";
+        final String ES_RESULT_SORT_FIELDS = "dataMapElasticSearchDto.tableName";
 
 
         sourceBuilder.fetchSource(ES_RESULT_INCLUDES_FIELDS, null);
 
-        sourceBuilder.sort(ES_RESULT_SORT_FIELDS, SortOrder.DESC);
+        sourceBuilder.sort(ES_RESULT_SORT_FIELDS, SortOrder.ASC);
 
 
         sourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));

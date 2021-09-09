@@ -1,5 +1,5 @@
 es:
-  username:
-  password:
-  host:
-  port:
+  username: elastic
+  password: Zhishen@2020
+  host: 192.168.11.196
+  port: 9200
