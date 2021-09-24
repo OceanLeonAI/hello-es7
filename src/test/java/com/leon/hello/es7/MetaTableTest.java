@@ -1,8 +1,5 @@
 package com.leon.hello.es7;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.leon.hello.es7.entity.metacat.DataMapElasticSearchDto;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -41,7 +38,7 @@ public class MetaTableTest {
     private RestHighLevelClient client;
 
     /**
-     * 通过数据源名称查询es数据
+     * 通过数据源名称和数据库名称查询es数据
      *
      * @throws IOException
      */
@@ -57,10 +54,18 @@ public class MetaTableTest {
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
 
         // 数据源
-        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "oracle_test11")); //
+//        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "leon")); //
 
         // 数据库
-        boolQuery.must(QueryBuilders.matchQuery("name.databaseName", "zhouchun")); //
+//        boolQuery.must(QueryBuilders.matchQuery("name.databaseName", "leon")); //
+//        boolQuery.must(QueryBuilders.matchQuery("fields.isDistributionKey", true));
+//        boolQuery.must(QueryBuilders.matchQuery("fields.is_distribution_key", true));
+
+
+        // 指标id data_indicator_id
+//        boolQuery.must(QueryBuilders.termsQuery("fields.dataIndicatorId", "1417745937912569857","1421023121099862017"));
+        // 指标名称 data_indicator_name
+        boolQuery.must(QueryBuilders.termsQuery("fields.dataIndicatorName.keyword", "投资回报率","周活跃数（WAU）"));
 
         sourceBuilder.query(boolQuery);
 
@@ -83,7 +88,7 @@ public class MetaTableTest {
         final String ES_RESULT_SORT_FIELDS = "dataMapElasticSearchDto.tableName";
 
 
-        sourceBuilder.fetchSource(ES_RESULT_INCLUDES_FIELDS, null);
+        // sourceBuilder.fetchSource(ES_RESULT_INCLUDES_FIELDS, null);
 
         sourceBuilder.sort(ES_RESULT_SORT_FIELDS, SortOrder.ASC);
 
@@ -103,10 +108,12 @@ public class MetaTableTest {
         System.out.println("查询到 " + searchResponse.getHits().getHits().length + " 条数据");
         for (SearchHit hit : searchResponse.getHits().getHits()) {
             Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-            Object dataMapElasticSearchDto = sourceAsMap.get("dataMapElasticSearchDto");
+//            Object dataMapElasticSearchDto = sourceAsMap.get("dataMapElasticSearchDto");
+//             System.out.println(sourceAsMap.get("dataMapElasticSearchDto"));
+            System.out.println(sourceAsMap);
             // System.out.println(dataMapElasticSearchDto);
-            DataMapElasticSearchDto mapElasticSearchDto = JSONObject.parseObject(JSON.toJSONString(dataMapElasticSearchDto), DataMapElasticSearchDto.class);
-            System.out.println("mapElasticSearchDto ---> " + mapElasticSearchDto);
+            //DataMapElasticSearchDto mapElasticSearchDto = JSONObject.parseObject(JSON.toJSONString(dataMapElasticSearchDto), DataMapElasticSearchDto.class);
+            // System.out.println("mapElasticSearchDto ---> " + mapElasticSearchDto);
             // System.out.println(hit.getSourceAsString());
         }
     }

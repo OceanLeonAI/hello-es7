@@ -523,7 +523,7 @@ class HelloEs7ApplicationTests {
         // 查询条件可以用 QueryBuilders 构建
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
 //        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "metadata"));
-        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "greenplum")); // 1
+        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "leon")); // 1
 //        boolQuery.must(QueryBuilders.matchQuery("name.catalogName", "数据中台")); // 228
         sourceBuilder.query(boolQuery);
         sourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
