@@ -63,9 +63,11 @@ public class MetaTableTest {
 
 
         // 指标id data_indicator_id
-//        boolQuery.must(QueryBuilders.termsQuery("fields.dataIndicatorId", "1417745937912569857","1421023121099862017"));
+//        boolQuery.must(QueryBuilders.termsQuery("fields.dataIndicatorId", "1417745937912569857", "1421023121099862017"));
+        boolQuery.must(QueryBuilders.termsQuery("fields.dataIndicatorId", new Long[]{1417745937912569857L, 1421023121099862017L}));
+//        boolQuery.must(QueryBuilders.termsQuery("fields.dataIndicatorId", new Long[]{1410541407572062200L}));
         // 指标名称 data_indicator_name
-        boolQuery.must(QueryBuilders.termsQuery("fields.dataIndicatorName.keyword", "投资回报率","周活跃数（WAU）"));
+//        boolQuery.must(QueryBuilders.termsQuery("fields.dataIndicatorName.keyword", "投资回报率","周活跃数（WAU）"));
 
         sourceBuilder.query(boolQuery);
 
